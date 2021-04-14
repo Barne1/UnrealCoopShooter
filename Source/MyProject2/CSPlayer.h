@@ -32,7 +32,7 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AActor> GunClass;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCameraComponent* FPSCamera;
 
 	UPROPERTY(VisibleAnywhere)
@@ -41,9 +41,13 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	ACSGun* EquippedGun;
 
+	UPROPERTY(replicated)
+	float Pitch;
+
 protected:
 	void HandleRightInput(float Value);
 	void HandleForwardInput(float Value);
 	void HandleShootInput();
+	void HandleReloadInput();
 
 };

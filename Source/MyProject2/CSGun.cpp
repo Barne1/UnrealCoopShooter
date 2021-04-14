@@ -3,9 +3,16 @@
 
 #include "CSGun.h"
 
+
+#include "CSPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Materials/MaterialInterface.h"
+#include "CSEnemy.h"
+#include "CSThirdPersonGun.h"
 
 // Sets default values
 ACSGun::ACSGun()
@@ -41,10 +48,17 @@ void ACSGun::Tick(float DeltaTime)
 
 void ACSGun::Fire(UCameraComponent* Cam)
 {
-	if(bAllowedToFire)
+	if(bAllowedActions)
 	{
-		if(AmmoInMagazine > 0 && TimeUntilNextShot <= 0.f)
+		if(AmmoInMagazine > 0 && TimeUntilNextShot <= 0.f && !bReloading)
 		{
+			OnFire();
+			
+			if(TPSGun)
+			{
+				TPSGun->OnFire();
+			}
+			
 			AmmoInMagazine--;
 
 			FHitResult Hit;
@@ -54,15 +68,47 @@ void ACSGun::Fire(UCameraComponent* Cam)
 			ActorsToIgnore.Add(this);
 			ActorsToIgnore.Add(GetOwner());
 			
-			UKismetSystemLibrary::LineTraceSingle(this, Start, End, TraceChannel, true, ActorsToIgnore, EDrawDebugTrace::Persistent, Hit, true);
-			
-			OnFire();
+			if(UKismetSystemLibrary::LineTraceSingle(this, Start, End, TraceChannel, true, ActorsToIgnore, EDrawDebugTrace::None, Hit, true))
+			{
+				ACSEnemy* Enemy = Cast<ACSEnemy>(Hit.Actor);
+				if(Enemy)
+				{
+					Enemy->TakeDamage(Damage);
+				}
+				else if(Hit.Actor->GetRootComponent()->Mobility != EComponentMobility::Movable)
+				{
+					UE_LOG(LogTemp, Log, TEXT("SPAWNING DECAL"));
+					UGameplayStatics::SpawnDecalAtLocation(this, BulletHoleDecalMaterial, FVector(20.f), Hit.ImpactPoint, UKismetMathLibrary::MakeRotFromX(-Hit.ImpactNormal));
+				}
+			}
 		}
 		else
 		{
 			OnOutOfAmmo();
 		}
 	}
+}
+
+void ACSGun::BeginReload()
+{
+	if(bAllowedActions)
+	{
+		if(!bReloading && AmmoInMagazine < MaxMagazineCount && SpareAmmo > 0)
+		{
+			bReloading = true;
+			//TODO: Add Timer and animation
+			EndReload();
+		}
+	}
+}
+
+void ACSGun::EndReload()
+{
+	int AmmoNeeded = MaxMagazineCount - AmmoInMagazine;
+	int AmmoTransferred = FMath::Min(AmmoNeeded, SpareAmmo);
+	SpareAmmo -= AmmoTransferred;
+	AmmoInMagazine += AmmoTransferred;
+	bReloading = false;
 }
 
 

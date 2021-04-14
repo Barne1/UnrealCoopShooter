@@ -3,12 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "GameFramework/Actor.h"
 #include "CSGun.generated.h"
 
 class USkeletalMeshComponent;
 class UCameraComponent;
+class UMaterialInterface;
+class ACSThirdPersonGun;
 
 UCLASS()
 class MYPROJECT2_API ACSGun : public AActor
@@ -36,8 +37,9 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AActor> ThirdPersonGunClass;
 
-	//use this to prevent shooting during potential cutscenes, preventing friendly fire, etc.
-	bool bAllowedToFire = true;
+	//use this to prevent shooting or reloading during potential cutscenes, preventing friendly fire, etc.
+	bool bAllowedActions = true;
+	bool bReloading = false;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int MaxMagazineCount = 30;
@@ -52,12 +54,17 @@ public:
 
 	float TimeUntilNextShot;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int AmmoInMagazine = 30;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int SpareAmmo = 90;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	int Damage = 40;
+
 	void Fire(UCameraComponent* Cam);
+	void BeginReload();
+	void EndReload();
 	
 	//TODO: used for effects when firing
 	UFUNCTION(BlueprintImplementableEvent)
@@ -66,4 +73,10 @@ public:
 	//TODO: used for click effect when out of ammo
 	UFUNCTION(BlueprintImplementableEvent)
     void OnOutOfAmmo();
+
+	ACSThirdPersonGun* TPSGun;
+
+protected:
+	UPROPERTY(EditDefaultsOnly)
+	UMaterialInterface* BulletHoleDecalMaterial;
 };

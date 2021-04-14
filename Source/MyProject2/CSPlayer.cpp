@@ -8,6 +8,8 @@
 #include "Camera/CameraComponent.h"
 #include "CSGun.h"
 #include "Engine/Engine.h"
+#include "CSThirdPersonGun.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ACSPlayer::ACSPlayer()
@@ -23,6 +25,8 @@ ACSPlayer::ACSPlayer()
 
 	FPSGunSocket = CreateDefaultSubobject<USceneComponent>(TEXT("FPS Gun Socket"));
 	FPSGunSocket->SetupAttachment(FPSCamera);
+
+	this->bReplicates = true;
 }
 
 // Called when the game starts or when spawned
@@ -47,6 +51,8 @@ void ACSPlayer::BeginPlay()
 
 	AActor* TPSGun = GetWorld()->SpawnActor(EquippedGun->ThirdPersonGunClass, &GetTransform(), SpawnParameters);
 	TPSGun->AttachToComponent(GetMesh(), AttachmentRules, "GunSocket");
+	ACSThirdPersonGun* TPSGunTemp = Cast<ACSThirdPersonGun>(TPSGun);
+	EquippedGun->TPSGun = TPSGunTemp;
 	
 }
 
@@ -54,6 +60,7 @@ void ACSPlayer::BeginPlay()
 void ACSPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	Pitch = -GetControlRotation().Pitch;
 }
 
 // Called to bind functionality to input
@@ -66,7 +73,7 @@ void ACSPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerInputComponent->BindAxis("LookYaw", this, &ACSPlayer::AddControllerYawInput);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACSPlayer::Jump);
 	PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &ACSPlayer::HandleShootInput);
-	bWasJumping = true;
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ACSPlayer::HandleReloadInput);
 }
 
 void ACSPlayer::HandleRightInput(float Value)
@@ -85,5 +92,20 @@ void ACSPlayer::HandleShootInput()
 	{
 		EquippedGun->Fire(FPSCamera);
 	}
+}
+
+void ACSPlayer::HandleReloadInput()
+{
+	if(EquippedGun)
+	{
+		EquippedGun->BeginReload();
+	}
+}
+
+void ACSPlayer::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+    DOREPLIFETIME(float, Pitch);
 }
 
